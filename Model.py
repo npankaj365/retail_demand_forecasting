@@ -73,9 +73,78 @@ class ARIMA_Model(Model):
         print("Mean Squared error = {:.4f}".format(self.mse))
         print("Mean Absolute error = {:.4f}".format(self.mae))
 
+class HoltWinter_Model(Model):
+
+    def __init__(self, file):
+        self.alpha, self.beta, self.gamma = 0.1, 0.1, 0.1
+        self.L = 4
+        super().__init__(file)
+
+    def initial_trend(self, X_train, L):
+        total = 0
+        for i in range(L):
+            t = (X_train[i+L] - X_train[i])
+            t /= L
+            total += t
+        return total / L
+
+    def initial_season_components(self, X_train, L):
+        no_of_seasons = int(len(X_train)/L)
+        season_averages = []
+        seasonal_data = {}
+        
+        # Find season averages
+        for season in range(no_of_seasons):
+            i = L*season
+            season_data = X_train[i:i+L]
+            season_avg = sum(season_data)/L
+            season_averages.append(season_avg)
+            
+        # Find initial values for each season
+        for i in range(L):
+            total_over_avg = 0
+            for season in range(no_of_seasons):
+                ind = L*season
+                total_over_avg += X_train[ind+i] - season_averages[season]
+            seasonal_data[i] = total_over_avg/no_of_seasons
+        return seasonal_data
+
+    def triple_exponential_smoothing(self, X_train, X_test, L, alpha, beta, gamma, no_to_predict):
+        preds = []
+        seasonal_data = self.initial_season_components(X_train, L)
+            
+        smooth = X_train[0]
+        trend = self.initial_trend(X_train, L)
+        result = [X_train[0]]
+        
+        for i in range(L + no_to_predict):
+            if i >= len(X_train):
+                m = i - len(X_train) + 1
+                val = smooth + m * trend + seasonal_data[i % L]
+                result.append(val)
+            else:
+                val = X_train[i]
+                last_smooth, smooth = smooth, alpha * (val - seasonal_data [i%L]) + (1-alpha) * (smooth + trend)
+                trend = beta * (smooth - last_smooth) + (1-beta) * trend
+                seasonal_data[i % L] = gamma * (val-smooth) + (1-gamma) * seasonal_data[i%L]
+                tot = smooth + trend + seasonal_data[i%L]
+                result.append(tot)
+        return result
+
+    def core_model(self):
+        no_to_predict = len(self.X_train) + len(self.X_test)
+        result = self.triple_exponential_smoothing(self.X_train, self.X_test, self.L, self.alpha, self.beta, self.gamma, no_to_predict)
+
+        self.mse = self.get_mse(self.X_train, result[:-len(self.X_test) - self.L - 1])
+        self.mae = self.get_mae(self.X_train, result[:-len(self.X_test) - self.L - 1])
+        
+        print("Mean Squared error = {:.4f}".format(self.mse))
+        print("Mean Absolute error = {:.4f}".format(self.mae))
+    
 
 #Starter
 file = 'SalesData.csv'
-m = ARIMA_Model(file)
+# m = ARIMA_Model(file)
+m = HoltWinter_Model(file)
 print(m.mse)
 
