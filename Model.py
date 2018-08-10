@@ -42,8 +42,13 @@ class Model():
     def get_mae(self, test_data, predicted_data):
         return mean_absolute_error(test_data, predicted_data)
 
+    def get_mape(self, test_data, predicted_data): 
+        test_data, predicted_data = np.array(test_data), np.array(predicted_data)
+        return np.mean(np.abs((test_data - predicted_data) / test_data)) * 100
 
 class ARIMA_Model(Model):
+
+    name = 'ARIMA'
 
     def __init__(self, file):
         super().__init__(file)
@@ -64,7 +69,7 @@ class ARIMA_Model(Model):
             #Calculate error
             error.append(math.fabs(predicted[i][0] - self.X_test[i]))
 
-            print('%f, predicted=%f, expected=%f, error=%f' % (i, predicted[i][0], self.X_test[i], error[i]))
+            #print('%f, predicted=%f, expected=%f, error=%f' % (i, predicted[i][0], self.X_test[i], error[i]))
 
         self.mse = self.get_mse(self.X_test, predicted)
         self.mae = self.get_mae(self.X_test, predicted)
@@ -75,9 +80,11 @@ class ARIMA_Model(Model):
 
 class HoltWinter_Model(Model):
 
+    name = 'Holtzmann-Winter'
+
     def __init__(self, file):
         self.alpha, self.beta, self.gamma = 0.1, 0.1, 0.1
-        self.L = 4
+        self.L = 7
         super().__init__(file)
 
     def initial_trend(self, X_train, L):
@@ -144,7 +151,13 @@ class HoltWinter_Model(Model):
 
 #Starter
 file = 'SalesData.csv'
-# m = ARIMA_Model(file)
-m = HoltWinter_Model(file)
-print(m.mse)
+model_runs = [ARIMA_Model(file), HoltWinter_Model(file)]
+min_mse = model_runs[0].mse
+best_model = model_runs[0].name
+for model in model_runs:
+    if min_mse > model.mse:
+        min_mse = model.mse
+        best_model = model.name
+
+print(best_model)
 
