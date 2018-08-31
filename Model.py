@@ -3,6 +3,8 @@ import math
 import numpy as np
 import pandas as pd
 from dateutil import parser as dtparser
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
 from statsmodels.tsa.arima_model import ARIMA
 from sklearn import model_selection
 from sklearn.metrics import mean_squared_error, mean_absolute_error 
@@ -16,6 +18,8 @@ class Model():
         print("Started {} Model".format(self.name))
         self.data = self.load_data(file)
         print("Completed Loading")
+        self.export_excel(self.data, class_no)
+        print("Exporting to Excel for Class {}".format(class_no))
         self.select_data(class_no)
         print("Completed Selecting")
         self.intrapolate_data()
@@ -26,8 +30,26 @@ class Model():
         print("Completed {} Model".format(self.name))
 
     def load_data(self, file):
-        csv_data = pd.read_csv(file, index_col='Day', parse_dates=['Day', 'Fiscal Week'], date_parser=lambda s: dtparser.parse(s).date())
+        csv_data = pd.read_csv(file,
+                       index_col='Day',
+                       parse_dates=['Day', 'Fiscal Week'],
+                       usecols = ['Fiscal Season','SeasonDesc','Fiscal Year','Fiscal Week','Day','Dayofweek','Class','ClassDesc','Location','Locdesc','SalesU','SalesD'],
+                       date_parser=lambda s: dtparser.parse(s).date())
         return csv_data
+
+    def export_excel(self, csv_data, class_no):
+        df = csv_data.loc[csv_data['Class'] == int(class_no)]
+        #Saving to Excel
+        wb = Workbook()
+        ws = wb.active
+
+        for r in dataframe_to_rows(df, index=False, header=True):
+            ws.append(r)
+            
+        for cell in ws['A'] + ws[1]:
+            cell.style = 'Pandas'
+
+        wb.save("result.xlsx")
 
     def select_data(self, class_no):
         self.sales_data = self.data.query('Class=={}'.format(class_no)).SalesD.astype('float')
@@ -87,7 +109,9 @@ class ARIMA_Model(Model):
         self.mse = self.get_mse(self.X_test, predicted)
         self.mae = self.get_mae(self.X_test, predicted)
         
-        model.save('arima_model.pkl')
+        #To save model
+        # model.save('arima_model.pkl')
+
         print("Mean Squared error = {:.4f}".format(self.mse))
         print("Mean Absolute error = {:.4f}".format(self.mae))
 
