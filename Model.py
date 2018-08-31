@@ -1,3 +1,4 @@
+import sys
 import math
 import numpy as np
 import pandas as pd
@@ -11,11 +12,11 @@ np.warnings.filterwarnings('ignore')
 class Model():
     name = ''
 
-    def __init__(self, file):
+    def __init__(self, file, class_no):
         print("Started {} Model".format(self.name))
         self.data = self.load_data(file)
         print("Completed Loading")
-        self.select_data()
+        self.select_data(class_no)
         print("Completed Selecting")
         self.intrapolate_data()
         print("Completed Filling")
@@ -28,8 +29,8 @@ class Model():
         csv_data = pd.read_csv(file, index_col='Day', parse_dates=['Day', 'Fiscal Week'], date_parser=lambda s: dtparser.parse(s).date())
         return csv_data
 
-    def select_data(self):#Could make this dynamic
-        self.sales_data = self.data.query('Class==10').SalesD.astype('float')
+    def select_data(self, class_no):
+        self.sales_data = self.data.query('Class=={}'.format(class_no)).SalesD.astype('float')
 
     def intrapolate_data(self):
         # Fill in missing values (some dates are missing in the index)
@@ -62,8 +63,8 @@ class ARIMA_Model(Model):
 
     name = 'ARIMA'
 
-    def __init__(self, file):
-        super().__init__(file)
+    def __init__(self, file, class_no):
+        super().__init__(file, class_no)
 
     def core_model(self):
         predicted = []
@@ -94,10 +95,10 @@ class HoltWinter_Model(Model):
 
     name = 'Holtzmann-Winter'
 
-    def __init__(self, file):
+    def __init__(self, file, class_no):
         self.alpha, self.beta, self.gamma = 0.1, 0.1, 0.1
         self.season_length = 4
-        super().__init__(file)
+        super().__init__(file, class_no)
 
     def initial_trend(self, X_train, season_length):
         total = 0
@@ -129,7 +130,6 @@ class HoltWinter_Model(Model):
         return seasonal_data
 
     def triple_exponential_smoothing(self, X_train, X_test, season_length, alpha, beta, gamma, no_to_predict):
-        preds = []
         seasonal_data = self.initial_season_components(X_train, season_length)
             
         smooth = X_train[0]
@@ -165,8 +165,10 @@ class HoltWinter_Model(Model):
     
 
 #Starter
+class_no = sys.argv[1]
+
 file = 'SalesData.csv'
-model_runs = [ARIMA_Model(file), HoltWinter_Model(file)]
+model_runs = [ARIMA_Model(file, class_no), HoltWinter_Model(file, class_no)]
 min_mse = model_runs[0].mse
 best_model = model_runs[0].name
 for model in model_runs:
@@ -175,4 +177,3 @@ for model in model_runs:
         best_model = model.name
 
 print(best_model)
-
