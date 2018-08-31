@@ -110,7 +110,7 @@ class ARIMA_Model(Model):
         self.mae = self.get_mae(self.X_test, predicted)
         
         #To save model
-        # model.save('arima_model.pkl')
+        model.save('arima_model.pkl')
 
         print("Mean Squared error = {:.4f}".format(self.mse))
         print("Mean Absolute error = {:.4f}".format(self.mae))
