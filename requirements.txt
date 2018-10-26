@@ -1,6 +1,6 @@
 numpy
 pandas
-dateutil
+python-dateutil
 sklearn
 openpyxl
 statsmodels
